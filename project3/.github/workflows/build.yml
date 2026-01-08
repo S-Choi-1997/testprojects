@@ -1,0 +1,65 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run build script
+      run: npm run build
+
+    - name: Test application startup
+      run: |
+        # Start server in background
+        node src/index.js &
+        SERVER_PID=$!
+
+        # Wait for server to start
+        sleep 3
+
+        # Test endpoints
+        echo "Testing main endpoint..."
+        curl -f http://localhost:3000/api/express || { kill $SERVER_PID; exit 1; }
+
+        echo "Testing health endpoint..."
+        curl -f http://localhost:3000/api/express/health || { kill $SERVER_PID; exit 1; }
+
+        # Stop server
+        kill $SERVER_PID
+
+        echo "✅ All endpoints responding correctly"
+
+    - name: Check dependencies
+      run: npm list --depth=0
+
+    - name: Build summary
+      run: |
+        echo "### ✅ Express Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Endpoints Tested:**" >> $GITHUB_STEP_SUMMARY
+        echo "- \`GET /api/express\` ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- \`GET /api/express/health\` ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Dependencies:**" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        npm list --depth=0 >> $GITHUB_STEP_SUMMARY || true
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

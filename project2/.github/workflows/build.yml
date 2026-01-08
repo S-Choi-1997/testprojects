@@ -1,24 +1,15 @@
-name: Project2 (Spring Boot + Gradle) Build
+name: Build and Test
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'project2/**'
-      - '.github/workflows/project2-build.yml'
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
-    paths:
-      - 'project2/**'
-      - '.github/workflows/project2-build.yml'
+    branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./project2
 
     steps:
     - name: Checkout code
@@ -29,17 +20,19 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
-        cache: 'gradle'
+
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
 
     - name: Grant execute permission for gradlew
-      run: chmod +x gradlew || echo "Using system gradle"
+      run: chmod +x gradlew || echo "No gradlew found, will use system gradle"
 
     - name: Build with Gradle
       run: |
         if [ -f "gradlew" ]; then
-          ./gradlew build --no-daemon
+          ./gradlew clean build --no-daemon
         else
-          gradle build
+          gradle clean build
         fi
 
     - name: Run tests
@@ -51,26 +44,34 @@ jobs:
         fi
       continue-on-error: true
 
-    - name: Upload build artifacts
+    - name: Check build output
+      run: |
+        echo "Build artifacts:"
+        ls -lh build/libs/
+        du -sh build/libs/
+
+    - name: Upload JAR artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: project2-jar
-        path: project2/build/libs/*.jar
+        name: spring-boot-jar-${{ github.sha }}
+        path: build/libs/*.jar
         retention-days: 7
 
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: project2-test-results
-        path: project2/build/test-results/
+        name: test-results-${{ github.sha }}
+        path: build/test-results/
         retention-days: 7
 
     - name: Build summary
       run: |
-        echo "### ✅ Project2 Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Spring Boot Build Successful" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Build Output:**" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
         ls -lh build/libs/ >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**JAR Size:** \`$(du -sh build/libs/*.jar | cut -f1 | head -1)\`" >> $GITHUB_STEP_SUMMARY

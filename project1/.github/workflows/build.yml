@@ -1,24 +1,15 @@
-name: Project1 (React + TypeScript) Build
+name: Build and Test
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'project1/**'
-      - '.github/workflows/project1-build.yml'
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
-    paths:
-      - 'project1/**'
-      - '.github/workflows/project1-build.yml'
+    branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./project1
 
     steps:
     - name: Checkout code
@@ -29,7 +20,6 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
-        cache-dependency-path: project1/package-lock.json
 
     - name: Install dependencies
       run: npm ci
@@ -41,18 +31,26 @@ jobs:
     - name: Build project
       run: npm run build
 
+    - name: Check build output
+      run: |
+        echo "Build artifacts:"
+        ls -lh dist/
+        du -sh dist/
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: project1-dist
-        path: project1/dist/
+        name: react-build-${{ github.sha }}
+        path: dist/
         retention-days: 7
 
     - name: Build summary
       run: |
-        echo "### ✅ Project1 Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ React Build Successful" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Build Output:**" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
         ls -lh dist/ >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Size:** \`$(du -sh dist/ | cut -f1)\`" >> $GITHUB_STEP_SUMMARY
