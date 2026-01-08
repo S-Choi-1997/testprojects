@@ -1,0 +1,55 @@
+name: Project3 (Node.js + Express) Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'project3/**'
+      - '.github/workflows/project3-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'project3/**'
+      - '.github/workflows/project3-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./project3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: project3/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run build script
+      run: npm run build
+
+    - name: Test application startup
+      run: |
+        timeout 10s node src/index.js &
+        sleep 3
+        curl -f http://localhost:3000/api/express || exit 1
+        curl -f http://localhost:3000/api/express/health || exit 1
+        pkill -f "node src/index.js"
+
+    - name: Build summary
+      run: |
+        echo "### ✅ Project3 Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Dependencies Installed:**" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        npm list --depth=0 >> $GITHUB_STEP_SUMMARY || true
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

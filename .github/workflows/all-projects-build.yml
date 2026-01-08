@@ -1,0 +1,113 @@
+name: All Projects Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-project1:
+    name: Build Project1 (React + TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./project1
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: project1/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build project
+      run: npm run build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: project1-dist
+        path: project1/dist/
+
+  build-project2:
+    name: Build Project2 (Spring Boot + Gradle)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./project2
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+
+    - name: Build with Gradle
+      run: |
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+        else
+          gradle build
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: project2-jar
+        path: project2/build/libs/*.jar
+
+  build-project3:
+    name: Build Project3 (Node.js + Express)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./project3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: project3/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build project
+      run: npm run build
+
+  build-summary:
+    name: Build Summary
+    needs: [build-project1, build-project2, build-project3]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Generate summary
+      run: |
+        echo "# 🎯 All Projects Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Project | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Project1 (React + TypeScript) | ${{ needs.build-project1.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Project2 (Spring Boot + Gradle) | ${{ needs.build-project2.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Project3 (Node.js + Express) | ${{ needs.build-project3.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY

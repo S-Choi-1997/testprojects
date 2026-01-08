@@ -1,0 +1,76 @@
+name: Project2 (Spring Boot + Gradle) Build
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'project2/**'
+      - '.github/workflows/project2-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'project2/**'
+      - '.github/workflows/project2-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./project2
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew || echo "Using system gradle"
+
+    - name: Build with Gradle
+      run: |
+        if [ -f "gradlew" ]; then
+          ./gradlew build --no-daemon
+        else
+          gradle build
+        fi
+
+    - name: Run tests
+      run: |
+        if [ -f "gradlew" ]; then
+          ./gradlew test --no-daemon
+        else
+          gradle test
+        fi
+      continue-on-error: true
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: project2-jar
+        path: project2/build/libs/*.jar
+        retention-days: 7
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: project2-test-results
+        path: project2/build/test-results/
+        retention-days: 7
+
+    - name: Build summary
+      run: |
+        echo "### ✅ Project2 Build Successful" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Output:**" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        ls -lh build/libs/ >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
