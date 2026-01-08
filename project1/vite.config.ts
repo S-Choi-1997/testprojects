@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 9801,
-    allowedHosts: ['testing.albl.cloud', 'localhost']
+    allowedHosts: 'all'
   },
   preview: {
     host: '0.0.0.0',
